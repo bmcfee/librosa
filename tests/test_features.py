@@ -400,6 +400,71 @@ def test_spectral_flatness_errors():
     # negative amin
     yield __test, S, -1
 
+def test_spectral_contraction_synthetic():
+
+    # to construct a spectrogram
+    n_fft = 2048
+    def __test(y, S, contraction_ref):
+        contraction = librosa.feature.spectral_contraction(y=y,
+                                                     S=S,
+                                                     n_fft=2048,
+                                                     hop_length=512)
+        assert np.allclose(contraction, contraction_ref)
+
+    # comparison to a manual calculation result
+    S = np.array([[1, 3], [2, 1], [1, 2]])
+    contraction_ref = np.array([1.125, 0.70833333])
+    yield __test, None, S, contraction_ref
+
+    # ones
+    S = np.ones((1 + n_fft // 2, 10))
+    contraction_ones = np.ones((1, 10))*0.18628375
+    yield __test, None, S, contraction_ones
+
+    # zeros
+    S = np.zeros((1 + n_fft // 2, 10))
+    contraction_zeros = np.zeros((1, 10))
+    yield __test, None, S, contraction_zeros
+
+
+def test_spectral_contraction_errors():
+
+    @pytest.mark.xfail(raises=librosa.ParameterError)
+    def __test(S, amin):
+        librosa.feature.spectral_contraction(S=S,
+                                          amin=amin)
+
+    S = np.ones((1025, 10))
+
+    # zero amin
+    yield __test, S, 0
+
+    # negative amin
+    yield __test, S, -1
+
+def test_bandwise_contraction_new():
+
+    def __test(S, sr, result_ref):
+        bandwise = librosa.feature.bandwise_contraction(S, sr)
+        assert (bandwise, result_ref)
+
+    frame_length = 2048
+    hop_length = 512
+    center = 0
+
+    y, sr = librosa.load(__EXAMPLE_FILE, sr=None)
+
+    # Ensure audio is divisible into frame size.
+    y = librosa.util.fix_length(y, y.size - y.size % frame_length)
+
+    # STFT magnitudes with a constant windowing function and no centering.
+    S = librosa.magphase(librosa.stft(y,
+                                          n_fft=frame_length,
+                                          hop_length=hop_length,
+                                          window=np.ones,
+                                          center=center))[0]
+
+    yield __test, S, sr, None
 
 def test_rms():
 
